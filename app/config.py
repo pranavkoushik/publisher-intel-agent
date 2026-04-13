@@ -10,12 +10,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
         extra="ignore",
     )
 
-    slack_webhook_url: str
-    gemini_api_key: str
-    tavily_api_key: str
+    slack_webhook_url: str = ""
+    gemini_api_key: str = ""
+    tavily_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
 
     # Tavily search tuning
