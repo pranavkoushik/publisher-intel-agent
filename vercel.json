@@ -1,16 +1,19 @@
 {
   "builds": [
-    {
-      "src": "api/cron.py",
-      "use": "@vercel/python"
-    }
+    { "src": "api/cron.py", "use": "@vercel/python" },
+    { "src": "api/health.py", "use": "@vercel/python" },
+    { "src": "api/schedule.py", "use": "@vercel/python" }
   ],
   "routes": [
-    {
-      "src": "/api/cron",
-      "dest": "api/cron.py"
-    }
+    { "src": "/api/cron", "dest": "api/cron.py" },
+    { "src": "/api/health", "dest": "api/health.py" },
+    { "src": "/api/schedule", "dest": "api/schedule.py" }
   ],
+  "functions": {
+    "api/cron.py": {
+      "maxDuration": 300
+    }
+  },
   "crons": [
     {
       "path": "/api/cron",

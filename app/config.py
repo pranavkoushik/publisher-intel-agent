@@ -65,13 +65,6 @@ class Settings(BaseSettings):
     slack_retries: int = 3
     slack_timeout: int = 20
 
-    # Scheduling
-    cron_hour: int = 9
-    cron_minute: int = 0
-
-    # Server
-    host: str = "0.0.0.0"
-    port: int = 8000
     log_level: str = "info"
 
 

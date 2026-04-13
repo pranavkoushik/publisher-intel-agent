@@ -1,38 +1,40 @@
-"""Vercel serverless function — triggers the Render /run-job endpoint."""
+"""Vercel cron endpoint — runs the full publisher intel pipeline directly."""
 
 from http.server import BaseHTTPRequestHandler
 import json
+import logging
+import sys
 import os
-import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+from app.config import get_settings
+from app.scheduler import run_daily_job
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        render_url = os.environ.get("RENDER_URL", "")
+        settings = get_settings()
 
-        if not render_url:
-            self.send_response(500)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": "RENDER_URL not set"}).encode())
+        if not all([settings.slack_webhook_url, settings.gemini_api_key, settings.tavily_api_key]):
+            self._respond(503, {"error": "Missing required API keys"})
             return
 
         try:
-            req = urllib.request.Request(
-                f"{render_url}/run-job",
-                method="POST",
-                headers={"Content-Type": "application/json"},
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                body = json.loads(resp.read().decode())
-
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"status": 200, "body": body}).encode())
-
+            result = run_daily_job(settings)
+            self._respond(200, result)
         except Exception as e:
-            self.send_response(502)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode())
+            logging.getLogger(__name__).exception("Cron job failed")
+            self._respond(500, {"error": str(e)})
+
+    def _respond(self, status: int, body: dict):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(body).encode())
