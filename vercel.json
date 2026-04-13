@@ -2,12 +2,6 @@
   "functions": {
     "api/cron.py": {
       "maxDuration": 300
-    },
-    "api/health.py": {
-      "maxDuration": 10
-    },
-    "api/schedule.py": {
-      "maxDuration": 10
     }
   },
   "crons": [
