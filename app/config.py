@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,8 +15,22 @@ def _unpack_secrets() -> None:
         try:
             secrets = json.loads(raw)
             for key, value in secrets.items():
-                os.environ.setdefault(key.upper(), value)
+                if isinstance(value, str):
+                    os.environ.setdefault(key.upper(), value)
         except (json.JSONDecodeError, AttributeError):
+            pass
+
+    # If GOOGLE_CREDENTIALS_JSON is set, write it to a temp file
+    # so gspread can read it as a keyfile path
+    gcreds = os.environ.get("GOOGLE_CREDENTIALS_JSON", "")
+    if gcreds and not os.environ.get("GOOGLE_CREDENTIALS_FILE"):
+        try:
+            creds_dict = json.loads(gcreds)
+            fd, path = tempfile.mkstemp(suffix=".json", prefix="gcreds_")
+            with os.fdopen(fd, "w") as f:
+                json.dump(creds_dict, f)
+            os.environ["GOOGLE_CREDENTIALS_FILE"] = path
+        except (json.JSONDecodeError, OSError):
             pass
 
 
@@ -33,7 +48,12 @@ class Settings(BaseSettings):
     slack_webhook_url: str = ""
     gemini_api_key: str = ""
     tavily_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-2.5-flash-lite"
+
+    # Google Sheets
+    google_credentials_json: str = ""
+    google_credentials_file: str = ""
+    google_sheet_name: str = "Joveo Intel Logs"
 
     # Tavily search tuning
     tavily_max_results: int = 3

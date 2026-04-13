@@ -12,7 +12,11 @@ from app.services import (
     fetch_news,
     filter_recent_news,
     generate_brief,
+    load_sent_urls,
     post_to_slack,
+    quick_filter,
+    save_sent_urls,
+    soft_rank_and_limit,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,7 +45,7 @@ def get_todays_publishers() -> ScheduleEntry:
 
 
 def run_daily_job(settings: Settings) -> dict:
-    """Execute the full pipeline: fetch -> filter -> brief -> Slack."""
+    """Execute the full pipeline: fetch -> filter -> rank -> dedupe -> brief -> Slack."""
     label, publishers, coverage_label, _ = get_todays_publishers()
 
     if publishers is None:
@@ -50,10 +54,28 @@ def run_daily_job(settings: Settings) -> dict:
 
     logger.info("Running for %s (%d publishers)", label, len(publishers))
 
+    # Fetch
     news = fetch_news(publishers, settings)
+    logger.info("Fetched %d raw items", len(news))
+
+    # Quick filter (remove old year URLs)
+    news = quick_filter(news)
+    logger.info("After quick filter: %d", len(news))
+
+    # Rank and limit to top 15
+    news = soft_rank_and_limit(news)
+
+    # Date filter (HTML scraping + metadata)
     news = filter_recent_news(news, settings.news_lookback_days)
+    logger.info("After date filter: %d", len(news))
+
+    # Deduplicate by URL
     news = deduplicate_news(news)
-    logger.info("Collected %d unique news items after filtering", len(news))
+
+    # Remove already-sent URLs (Google Sheets)
+    sent_urls = load_sent_urls(settings)
+    news = [item for item in news if item.get("url", "") not in sent_urls]
+    logger.info("After Sheets dedup: %d unique new items", len(news))
 
     if not news:
         today_str = datetime.date.today().strftime("%A, %d %B %Y")
@@ -74,6 +96,10 @@ def run_daily_job(settings: Settings) -> dict:
         return {"status": "error", "reason": "brief_generation_failed"}
 
     success = post_to_slack(brief, settings)
+
+    # Track sent URLs in Google Sheets
+    save_sent_urls([item.get("url", "") for item in news], settings)
+
     return {
         "status": "success" if success else "slack_failed",
         "items": len(news),
