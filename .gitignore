@@ -1,0 +1,42 @@
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage & Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Temp
+*.tmp
+*.bak
