@@ -2,16 +2,18 @@
 
 from http.server import BaseHTTPRequestHandler
 import json
-import sys
 import os
+import sys
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from app.scheduler import get_todays_publishers
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        from app.scheduler import get_todays_publishers
+
         label, publishers, coverage, next_label = get_todays_publishers()
 
         if publishers is None:
