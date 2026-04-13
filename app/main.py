@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
+import requests as http_requests
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, Depends, HTTPException
@@ -107,3 +109,18 @@ def trigger_job(settings: Settings = Depends(get_settings)):
         raise HTTPException(status_code=503, detail="Missing required API keys. Set SLACK_WEBHOOK_URL, GEMINI_API_KEY, TAVILY_API_KEY.")
     result = run_daily_job(settings)
     return result
+
+
+@app.get("/api/cron")
+def cron_trigger():
+    """Called by Vercel cron — forwards to Render's /run-job endpoint."""
+    render_url = os.environ.get("RENDER_URL", "")
+    if not render_url:
+        raise HTTPException(status_code=503, detail="RENDER_URL not set")
+
+    try:
+        resp = http_requests.post(f"{render_url}/run-job", timeout=120)
+        return {"status": resp.status_code, "body": resp.json()}
+    except Exception as e:
+        logger.exception("Cron trigger failed")
+        raise HTTPException(status_code=502, detail=str(e))
