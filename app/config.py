@@ -1,9 +1,25 @@
 from __future__ import annotations
 
+import json
 import os
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _unpack_secrets() -> None:
+    """If APP_SECRETS is set (JSON blob), explode its keys into individual env vars."""
+    raw = os.environ.get("APP_SECRETS", "")
+    if raw:
+        try:
+            secrets = json.loads(raw)
+            for key, value in secrets.items():
+                os.environ.setdefault(key.upper(), value)
+        except (json.JSONDecodeError, AttributeError):
+            pass
+
+
+_unpack_secrets()
 
 
 class Settings(BaseSettings):
