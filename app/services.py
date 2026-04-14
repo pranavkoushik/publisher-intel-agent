@@ -8,7 +8,7 @@ import re
 import time
 from datetime import datetime, timedelta, timezone
 
-import google.generativeai as genai
+from google import genai
 import gspread
 import requests
 from bs4 import BeautifulSoup
@@ -315,7 +315,7 @@ def generate_brief(
     coverage_label: str,
     settings: Settings,
 ) -> str | None:
-    genai.configure(api_key=settings.gemini_api_key)
+    client = genai.Client(api_key=settings.gemini_api_key)
 
     today = datetime.now().strftime("%A, %d %B %Y")
     context = "\n\n".join(
@@ -332,8 +332,10 @@ def generate_brief(
     )
 
     try:
-        model = genai.GenerativeModel(settings.gemini_model)
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=settings.gemini_model,
+            contents=prompt,
+        )
         return response.text.strip() if response.text else None
     except Exception:
         logger.exception("Gemini generation failed")
